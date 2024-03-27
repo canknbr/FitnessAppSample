@@ -1,31 +1,43 @@
 import { Link } from 'expo-router';
-import { Button, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import FoodItem from '../components/FoodItem';
 import { useState } from 'react';
 import { AntDesign } from '@expo/vector-icons';
-const items = [
-  {
-    label:"Pizza",
-    cal:75,
-    brand:"Dominos"
-  },
-  {
-    label:"Apple",
-    cal:50,
-    brand:"Generic"
-  },
-  {
-    label:"Coffee",
-    cal:105,
-    brand:"Americano"
+import { useLazyQuery, gql } from '@apollo/client';
+
+
+const query = gql`
+query search($ingr: String) {
+  search(ingr: $ingr) {
+    text
+    hints {
+      food {
+        label
+        brand
+        foodId
+        nutrients {
+          ENERC_KCAL
+        }
+      
+      }
+    }
   }
-]
+}
+`
 export default function App() {
-const [searchValue,setSearchValue] = useState("")
+  const [searchValue,setSearchValue] = useState("")
+  const [runSearch,{loading,error,data}] = useLazyQuery(query,{
+    variables:{ingr:searchValue}
+  })
 const performSearch = () => {
-  console.warn("searchValue",searchValue)
+runSearch({variables:{ingr:searchValue}}) 
   setSearchValue("")
 }
+
+if(error){
+  return <Text>{error.message}</Text>
+}
+const items = data?.search?.hints  || []
   return (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
@@ -34,9 +46,11 @@ const performSearch = () => {
         searchValue &&  <AntDesign name="close" size={16} color="gray" />
       }
       </View>
-      <Button title='Search' onPress={performSearch}/>
+     {searchValue && <Button title='Search' onPress={performSearch}/>}
+     {loading && <ActivityIndicator/>}
       <FlatList
         data={items}
+        ListEmptyComponent={()=><Text>Search a food</Text>}
         renderItem={({ item }) => <FoodItem item={item} />}
         contentContainerStyle={{
           gap: 10,
